@@ -2,71 +2,38 @@ package main
 
 import (
 	"fmt"
-	"math"
+	"sync"
 	"time"
 )
 
 func main() {
 
-	//асинхронный запуск
-	for i := 0; i < 10; i++ {
-		go PrintNum(i)
-	}
-	time.Sleep(3 * time.Second)
+	//Fibonacci(1000) // 8.4734ms
 	fmt.Println()
 
-	//синхронный запуск
-	c := make(chan int)
-	go PrintNumSync(0, c)
-
-	for j := range c {
-		fmt.Print(j, " ")
-
-	}
+	//go Fibonacci(1000)//0s
 	fmt.Println()
 
-	//Worker Pools
-	in := make(chan int)
-	out := make(chan int)
+	var wg sync.WaitGroup
 
-	//10 инстансов
-	for i := 0; i < 10; i++ {
-		go PrintNumWp(in, out)
-	}
-	for job := 0; job < 10; job++ {
-		in <- job
-	}
-	close(in)
-
-	//собираем результаты- это гарантирует, что все горутины закончились
-	for k := 0; k < 10; k++ {
-		<-out
+	for i := 0; i <= 1000; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			Fibonacci(i) //999.3µs
+		}(i)
+		wg.Wait()
 	}
 }
 
-func PrintNum(num int) {
-	sum := (num * num) + (num*num)/int(math.Sqrt(3))
-	time.Sleep(2 * time.Second)
-	fmt.Print(sum, " ")
-
-}
-
-func PrintNumSync(num int, c chan int) {
-	for i := 0; i < 10; i++ {
-		num = i
-		sum := (num * num) + (num*num)/int(math.Sqrt(3))
-		time.Sleep(time.Second * 1)
-		c <- sum
+func Fibonacci(n int) int {
+	defer func(t time.Time) {
+		fmt.Println(time.Since(t))
+	}(time.Now())
+	x, y := 0, 1
+	for i := 0; i < n; i++ {
+		x, y = y, x+y
+		fmt.Print(x, " ")
 	}
-	close(c)
-}
-
-func PrintNumWp(in <-chan int, out chan<- int) {
-	for i := range in {
-		sum := (i * i) + (i*i)/int(math.Sqrt(3))
-		time.Sleep(time.Second * 1)
-		fmt.Print(sum, " ")
-		out <- sum
-	}
-
+	return x
 }
